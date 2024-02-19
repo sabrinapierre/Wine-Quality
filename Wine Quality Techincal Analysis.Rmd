@@ -1,0 +1,387 @@
+---
+title: "Cleaning"
+author: "Sabrina"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+library(ezids)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(caret)
+library(pROC)
+library(party)
+library(rpart.plot)
+library(kableExtra)
+library(ConfusionTableR)
+knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+options(kableExtra.latex.load_packages = FALSE)
+```
+
+
+```{r}
+white <- read.csv("data/winequality-white.csv", sep=";")
+red <- read.csv("data/winequality-red.csv", sep=";")
+data <- rbind(red, white)
+str(data)
+```
+
+
+# Histograms
+
+```{r echo=FALSE} 
+fixed_acidityh <- ggplot(data, aes(x=fixed.acidity)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Fixed Acidity Histogram")
+print(fixed_acidityh)
+ggsave("fixed_acidityh.png")
+```
+
+
+```{r echo=FALSE}
+residual_sugarh <- ggplot(data, aes(x=residual.sugar)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Residual Sugar Histogram")
+print(residual_sugarh)
+ggsave("residual_sugarh.png")
+```
+
+
+```{r echo=FALSE}
+citric_acidrh <- ggplot(data, aes(x=citric.acid)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Citric Acid Histogram")
+print(citric_acidrh)
+ggsave("citric_acidrh.png")
+```
+
+
+```{r echo=FALSE}
+volatile_acidityh <- ggplot(data, aes(x=volatile.acidity)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Volatile Acidity Histogram")
+print(volatile_acidityh)
+ggsave("volatile_acidityh.png")
+```
+
+
+```{r echo=FALSE}
+chloridesh <- ggplot(data, aes(x=chlorides)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Chlorides Histogram")
+print(chloridesh)
+ggsave("chloridesh.png")
+```
+
+
+```{r echo=FALSE}
+free_sulfur_dioxideh <- ggplot(data, aes(x=free.sulfur.dioxide)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Free Sulfur Dioxide Histogram")
+print(free_sulfur_dioxideh)
+ggsave("free_sulfur_dioxideh.png")
+```
+
+
+```{r echo=FALSE}
+total_sulfur_dioxideh <- ggplot(data, aes(x=total.sulfur.dioxide)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Total Sulful Dioxide Histogram")
+print(total_sulfur_dioxideh)
+ggsave("total_sulfur_dioxideh.png")
+```
+
+
+```{r echo=FALSE}
+densityh <- ggplot(data, aes(x=density)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Density Histogram")
+print(densityh)
+ggsave("densityh.png")
+```
+
+
+```{r echo=FALSE}
+pHh <- ggplot(data, aes(x=pH)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("pH Histogram")
+print(pHh)
+ggsave("pHh.png")
+```
+
+
+```{r echo=FALSE}
+sulphatesh <- ggplot(data, aes(x=sulphates)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Sulphates Histogram")
+print(sulphatesh)
+ggsave("sulphatesh.png")
+```
+
+
+```{r echo=FALSE}
+alcoholh <- ggplot(data, aes(x=alcohol)) + 
+  geom_histogram(fill="red", color="black")+ ggtitle("Alcohol Histogram")
+print(alcoholh)
+ggsave("alcoholh.png")
+```
+
+
+```{r echo=FALSE}
+qualityh <- ggplot(data, aes(x=quality)) + 
+  geom_histogram(binwidth=1, fill="red", color="black") + ggtitle("Quality Histogram")
+print(qualityh)
+ggsave("qualityh.png")
+```
+
+```{r}
+alcohol_qualityh <- ggplot(data, aes(x=alcohol)) + 
+  geom_histogram(aes(fill="Alcohol"), binwidth = 0.5, alpha=0.5, color="black") +
+  geom_histogram(aes(x=quality, fill="Quality"), binwidth = 0.5, alpha=0.5, color="black") +
+  scale_fill_manual(name="Legend", values = c("Alcohol"="#D4AF37", "Quality"="red")) +
+  labs(title = "Histogram of Alcohol and Quality",
+       x = "Value",
+       y = "Count")
+print(alcohol_qualityh)
+ggsave("alcohol_qualityh.png")
+
+```
+
+# Boxplots
+
+```{r}
+data_tmp <- data
+colnames(data_tmp) = 1:ncol(data)
+ggplot(stack(data_tmp), aes(x = ind, y = values)) +
+  geom_boxplot() + 
+  xlab("Independent variables") + ylab("Values")
+```
+
+
+For brevity, we have used the integers from `1` to `12` to denote the column in the same order as in the dataset. 
+
+# Removing outliers
+
+
+```{r}
+data <- ezids::outlierKD2(data, free.sulfur.dioxide, rm=TRUE)
+data <- ezids::outlierKD2(data, total.sulfur.dioxide, rm = TRUE)
+data <- ezids::outlierKD2(data, residual.sugar, rm = TRUE)
+```
+
+```{r}
+data <- na.omit(data)
+data_tmp <- data
+colnames(data_tmp) = 1:ncol(data)
+ggplot(stack(data_tmp), aes(x = ind, y = values)) +
+  geom_boxplot() + 
+  xlab("Independent variables") + ylab("Values")
+```
+
+We have used the same convention as in the previous boxplot to denote the the columns.
+
+```{r}
+matrix_data<-cor(data)
+library(ezids)
+xkabledply(matrix_data)
+library(corrplot)
+corrplot(matrix_data, method= "number", col = colorRampPalette(c("white", "deepskyblue","blue4"))(100), na.label = "NA", number.cex = 0.70)
+```
+Observing the correlation plot, alcohol has the strongest overall correlation with the quality variable. At 0.44, alcohol is moderately strong in its positive relationship with quality. The next highest correlation with quality is density. We elected to exclude density from our models because the calculation of density depends on everything else in the wine. Thus, excluding density avoids multicollinearity in our regression models.
+
+
+# Simple Linear Regression Model
+```{r}
+lm1 <- lm(quality ~ alcohol, data = data)
+summary(lm1)
+```
+The estimated equation is Quality = 2.4 + 0.33alcohol where one more unit of alcohol increases quality by 33%.
+
+# Multiple Linear Regression Models
+```{r}
+lm2 <- lm(quality ~ alcohol+ volatile.acidity, data = data)
+summary(lm2)
+```
+The estimated equation is Quality = 2.94 + 0.32alcohol - 1.32volatile.acidity. One more unit of alcohol, in this model, is associated with an estimated increase of 32% in quality, ceteris paribus. Volatile.acidity has the expected relationship with quality. The coefficients of alcohol and volatile.acidity are both statistically significant at the 1% level in this model.
+
+```{r}
+lm3 <- lm(quality ~ alcohol + volatile.acidity + sulphates + citric.acid + chlorides + residual.sugar, data = data)
+summary(lm3)
+```
+The estimated equation is Quality = 2.22 + 0.345alcohol - 1.36volatile.acidity + 0.74sulphates - 0.17citric.acid - 0.37chlorides + 0.02residual.sugar. Now the effect of alcohol in quality has increased so that one more unit of alcohol increases quality an estimated 34.5%, all else equal. Both volatile.acidity and citric.acid has the expected negative signs for their coefficients. All of the coefficients of the variables, except for the coefficients of citric.acid and chlorides, are statistically significant at the 1% level. The coefficient for citric.acid is only significant at the 10% level, and chlorides is not significant at all.
+
+```{r}
+lm4 <- lm(quality ~ alcohol  + sulphates + chlorides + residual.sugar + pH, data = data)
+summary(lm4)
+```
+To check the effect of pH on quality, we ran a model with pH and without the other measures of acidity. The estimated equation is Quality = 2.04 + 0.347alcohol + 0.64sulphates - 2.51chlorides + 0.03residual.sugar - 0.07pH. The coefficient on alcohol increased a small amount from model 3 and the coefficient on pH is insignificant. All other variables are statistically significant at the 1% level.
+
+```{r}
+lm5 <- lm(quality ~ alcohol + volatile.acidity + sulphates + citric.acid  + residual.sugar, data = data) 
+summary(lm5)
+```
+The estimated equation is Quality = 2.19 + 0.348alcohol - 1.38volatile.acidity + 0.71sulphates - 0.197citric.acid + 0.02residual.sugar. This model drops the insignificant pH and chloride variables. The variables included in the model are significant at 5% level. Excluding citric.acid, everything in model 5 is significant at the 1% level. One more unit of alcohol is predicted to increase wine quality by 34.5%, all else equal.
+
+
+# Residual Plots
+
+```{r}
+resid1 <- residuals(lm1)
+summary(resid1)
+plot(resid1)
+```
+```{r}
+resid2 <- residuals(lm2)
+summary(resid2)
+plot(resid2)
+```
+```{r}
+resid3 <- residuals(lm3)
+summary(resid3)
+plot(resid3)
+```
+```{r}
+resid4 <- residuals(lm4)
+summary(resid4)
+plot(resid4)
+```
+```{r}
+resid5 <- residuals(lm5)
+plot(resid5)
+summary(resid4)
+```
+
+All the residual plots show that there is no heteroskedasticity issues with any of the regression models. Therefore, ordinary least squares (OLS) assumptions hold and the coefficients of all models are unbiased estimators.
+
+# Study 2: Wine Type Classification
+
+Now, we move to the second part of our research question -- can we determine the type of a wine, white or red, based on its chemical composition? In what follows, we will randomly select an equal number of white and red lines and build a logistic regression model to perform the classification. 
+
+### Model Building
+
+* create a label WineType: White or Red
+
+Since there are `r nrow(red)` red wines and `r nrow(white)` white wines, we randomly select only `r nrow(red)` white wines for the logistic regression.
+
+```{r}
+data2 <- rbind(red, sample_n(white, nrow(red)))
+data2 <- data2 %>% mutate(WineType = ifelse(as.numeric(rownames(data2)) <= nrow(red), 1, 0))
+```
+
+* Split the data into test and train
+
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(data2$WineType, p = .7, list = FALSE, times = 1)
+train <- data2[trainIndex, ]
+test <- data2[-trainIndex, ]
+```
+The data set has bin split into `r nrow(train)` training observations and `r nrow(test)` testing observations.
+
+* Generate a correlation plot
+
+```{r}
+matrix_data2<-cor(data2)
+xkabledply(matrix_data2)
+corrplot(matrix_data2, method= "number", col = colorRampPalette(c("white", "deepskyblue","blue4"))(100), na.label = "NA", number.cex = 0.70)
+```
+
+Based of this correlation plot, the variables we will consider in the logistic regression are:
+
+1. `Total Sulfur Dioxide Content`
+2. `Volatile Acidity`
+3. `Chlorides Content`
+
+Although the total sulfur dioxide content was excluded from the previous studies due to possible outliers, we include it in this study because it has the highest correlation with the type of wine even after the outliers have been removed. Also, these three variables are clearly independent. Therefore, we use them in the logistic regression.
+
+* Building the model
+
+```{r}
+lr1 <- glm(WineType ~ total.sulfur.dioxide + volatile.acidity  + chlorides, data=train)
+xkabledply(summary(lr1))
+```
+
+###  Model Evaluation
+
+```{r}
+model <- lr1
+predictions <- predict(model, test, type = "response")
+predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+test$WineType <- as.factor(test$WineType)
+predicted_classes <- as.factor(predicted_classes)
+cm <- confusionMatrix(predicted_classes, test$WineType)
+col1 <- c("Actual 1", 462, 17)
+col2 <- c("Actual 0", 458, 21)
+cmtable <- data.frame(Labels = c("Predicted 1", "Predicted 0"), Actual_1 = c(462, 17), 
+                   Actual_0 = c(458, 21))
+ltable <- kbl(cmtable, caption = "Logistic Regression Confusion Matrix", booktabs = T)  %>% kable_styling(latex_options = c("striped", "scale_down"))
+```
+
+
+* Confusion Matrix
+
+`r ltable`
+
+* Scores
+
+1. $\text{Accuracy} = \frac{TP + TN}{\text{Total}} = 0.96$
+
+We see that the model has a high accuracy, `96%`. This value implies that a given prediction is correct with probability `96%`, which is very high. We note that this value is observed in the testing set, so unlikedly due to overfitting.
+
+2. $\text{Sensitivity} = \frac{\text{TP}}{\text{FN} + \text{TP}} = 0.96$
+
+Similarly, the model has a high sensitivity, `96%`. This value means that a out of `False Negative` and `True Positive` predictions, the probability of a `True Positive` prediction is `96%`. In other words, the model does not produce a lot of `False negative` predictions compared to `True Positive`.
+
+3. $\text{Specificity} = \frac{\text{TN}}{\text{TN} + \text{FP}} = 0.96$
+
+Similarly, the model has specificity `96%`. This value means that out of `True Negative` and `False Positive` predictions, the probability of a `True Negative` prediction is `96%`. In other words, the model produce a lot fewer `False Positives` compared to `True Negatives`.
+
+*. ROC Curve
+
+```{r}
+roc_curve <- roc(test$WineType, predictions)
+ggroc(roc_curve, colour = 'maroon', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', 0.97, ')'))+
+  labs(y = "Sensitivity", x = "Specificity") + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text=element_text(size=12),
+        text = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        axis.text.x =element_text(colour="black"),
+        axis.text.y =element_text(colour="black")
+        )
+```
+
+
+# Decision Tree
+
+We partition the data the same way as before
+
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(data2$quality, p = .7, list = FALSE, times = 3)
+train <- data2[trainIndex, ]
+test <- data2[-trainIndex, ]
+dtree <- rpart(quality ~., data = train)
+rpart.plot(dtree)
+```
+
+
+```{r}
+p <- predict(dtree, test)
+rmse <- sqrt(mean((test$quality-p)^2))
+rsq <- cor(test$quality, p) ^2
+rsq
+```
+
+Model Evaluation
+
+* RMSE = `r rmse` 
+
+* $R^2$ = `r rsq` 
+
+In this case, we see the Root Mean Square Error (RMSE) has value `r rmse`. The RMSE measures the deviations between the predictions and the true values (the errors). The value `r rmse` can be seen as acceptable. However, the $R^2 =$ `r rsq`, which indicates the amount of variance captured by the model is a small. The `r rsq` indicates that the model captures only `20%` of the variations in the data. One way to explain why this $R^2$ result is to note that the wine quality scores that we have can be understood as discrete categories. Therefore, whenever a regression prediction is not correct, the error tends to be large. One way to fix this problem in a future study would be to normalize the quality score to a continuous scale before modeling.
+
+
